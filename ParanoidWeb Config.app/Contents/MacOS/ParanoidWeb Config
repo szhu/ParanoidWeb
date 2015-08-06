@@ -1,0 +1,135 @@
+#!/usr/bin/env osascript
+-- WebChooser
+-- Sean Zhu
+-- http://interestinglythere.com/
+
+
+global webAppId
+
+-- Handlers for WebChooser --
+(*
+on open location the_location
+	cacheWebAppId()
+	openInWebApp({the_location}, false)
+end open location
+on open the_files
+	cacheWebAppId()
+	openInWebApp(the_files, true)
+end open
+on run
+	cacheWebAppId()
+	openWebApp()
+end run
+on reopen
+	cacheWebAppId()
+	openWebApp()
+end reopen
+*)
+
+-- Handlers for WebChooser Config --
+on run
+	set |name| to "Web Chooser"
+	settings()
+end run
+on reopen
+	settings()
+end reopen
+
+-- Common handlers --
+
+on getSelfId()
+	return "com.interestinglythere.web.chooser"
+end getSelfId
+on getAppId(app_alias)
+	return do shell script "defaults read " & quoted(posix(app_alias & "Contents/Info") & " CFBundleIdentifier")
+end getAppId
+on forceCacheWebAppId()
+	try
+		set webAppId to do shell script "defaults read " & quoted(getSelfId()) & " InternetAppId"
+	on error
+		activate
+		display dialog "The preferred web browser has not been set." with icon caution buttons {"OK"} default button 1 cancel button 1
+		quit
+	end try
+end forceCacheWebAppId
+on cacheWebAppId()
+	try
+		webAppId
+	on error number -2753
+		forceCacheWebAppId()
+	end try
+	return webAppId
+end cacheWebAppId
+
+on setWebAppId(value)
+	try
+		do shell script "defaults write " & quoted(getSelfId()) & " InternetAppId " & quoted(value)
+	on error msg number num
+		activate
+		display dialog diagnosticMsg("The preferred web browser was not set.", msg, num) with icon caution buttons {"OK"} default button 1
+		error number -128
+	end try
+end setWebAppId
+
+on openWebApp()
+	try
+		do shell script "open -b " & quoted(webAppId)
+	on error msg number num
+		errorMsg(msg, num)
+		error number -128
+	end try
+end openWebApp
+on promptOpenWebApp()
+	display dialog "Open default web browser \"" & webAppId & "\" now?" buttons {"Cancel", "Open"} default button 2 cancel button 1 with icon note with title my |name|
+	return openWebApp()
+end promptOpenWebApp
+
+on settings()
+	activate
+	set appsList to {"com.apple.Safari", "com.google.Chrome", "com.google.Chrome.canary", "org.mozilla.Firefox", "Other…"}
+	set r to choose from list appsList with prompt "Select default web browser:" with title my |name|
+	
+	if r is not equal to false then
+		set appname to item 1 of r
+		if appname = (last item of appsList) then ¬
+			set appname to id of application ((choose file of type "APPL" without multiple selections allowed and invisibles) as string)
+		setWebAppId(appname)
+	end if
+	tell application id "com.interestinglythere.web.chooser" to forceCacheWebAppId()
+end settings
+
+on openInWebApp(the_files, usePosix)
+	activate
+	try
+		set argstring to ""
+		repeat with a_file in the_files
+			if usePosix then set a_file to posix(a_file)
+			set argstring to argstring & space & quoted(a_file)
+		end repeat
+		do shell script "open -b " & quoted(webAppId) & argstring
+	on error msg number num
+		errorMsg("CouldnÕt open the specified documents:" & return & msg, num)
+		error number -128
+	end try
+end openInWebApp
+
+on quoted(s)
+	return quoted form of s
+end quoted
+on posix(s)
+	return POSIX path of s
+end posix
+
+on errorMsg(msg, num)
+	try
+		display dialog msg with icon caution buttons {"OK"} default button 1 with title my |name|
+	on error msg number num
+		if num = 1712 then
+		else
+			error msg number num
+		end if
+	end try
+end errorMsg
+on diagnosticMsg(details, msg, num)
+	return (details & return & return & num as text) & return & msg
+end diagnosticMsg
