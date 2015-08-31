@@ -38,7 +38,7 @@ end reopen
 -- Common handlers --
 
 on getSelfId()
-	return "com.interestinglythere.web.chooser"
+	return "com.interestinglythere.paranoidweb"
 end getSelfId
 on getAppId(app_alias)
 	return do shell script "defaults read " & quoted(posix(app_alias & "Contents/Info") & " CFBundleIdentifier")
@@ -88,14 +88,14 @@ on settings()
 	activate
 	set appsList to {"com.apple.Safari", "com.google.Chrome", "com.google.Chrome.canary", "org.mozilla.Firefox", "Other…"}
 	set r to choose from list appsList with prompt "Select default web browser:" with title my |name|
-	
+
 	if r is not equal to false then
 		set appname to item 1 of r
 		if appname = (last item of appsList) then ¬
 			set appname to id of application ((choose file of type "APPL" without multiple selections allowed and invisibles) as string)
 		setWebAppId(appname)
 	end if
-	tell application id "com.interestinglythere.web.chooser" to forceCacheWebAppId()
+	tell application id "com.interestinglythere.paranoidweb.launcher" to forceCacheWebAppId()
 end settings
 
 on openInWebApp(the_files, usePosix)
